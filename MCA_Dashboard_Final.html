@@ -936,6 +936,12 @@
                         </div>
                     </div>
                     
+                    <div class="form-group" style="margin-top: 1.5rem;">
+                        <label class="form-label">Rep Commissions</label>
+                        <div id="editRepCommissionsContainer"></div>
+                        <button type="button" class="btn-add-rep" onclick="addEditRepCommissionField()">+ Add Rep to Deal</button>
+                    </div>
+                    
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" onclick="closeEditDealModal()">Cancel</button>
                         <button type="submit" class="btn-primary">Save Changes</button>
@@ -6335,6 +6341,8 @@
         // EDIT DEAL FUNCTIONALITY
         let editingDealId = null;
         
+        let editRepCommissionCounter = 0;
+        
         function editDeal(dealId) {
             const deal = allDealsData.find(d => d.id === dealId);
             if (!deal) return;
@@ -6357,7 +6365,45 @@
             document.querySelector('#editDealForm [name="commissionPct"]').value = commissionPct.toFixed(2);
             document.querySelector('#editDealForm [name="psfAmount"]').value = deal.psfAmount || 0;
             
+            // Populate existing rep commissions
+            editRepCommissionCounter = 0;
+            document.getElementById('editRepCommissionsContainer').innerHTML = '';
+            
+            // Find which reps are on this deal
+            Object.entries(repData).forEach(([repName, repInfo]) => {
+                const repDeal = repInfo.deals.find(d => d.id === dealId);
+                if (repDeal && repDeal.commission > 0) {
+                    addEditRepCommissionField(repName, repDeal.percentage);
+                }
+            });
+            
             editingDealId = dealId;
+        }
+        
+        function addEditRepCommissionField(selectedRep = '', selectedPercentage = '') {
+            const container = document.getElementById('editRepCommissionsContainer');
+            const id = editRepCommissionCounter++;
+            
+            const repOptions = Object.keys(repData).map(name => 
+                `<option value="${name}" ${name === selectedRep ? 'selected' : ''}>${name}</option>`
+            ).join('');
+            
+            const field = document.createElement('div');
+            field.className = 'commission-item';
+            field.id = `edit-rep-commission-${id}`;
+            field.innerHTML = `
+                <select class="form-select" name="editRepName_${id}" required>
+                    <option value="">Select Rep</option>
+                    ${repOptions}
+                </select>
+                <input type="number" class="form-input" name="editRepPercentage_${id}" placeholder="%" min="0" max="100" step="0.01" value="${selectedPercentage}" required>
+                <button type="button" class="btn-remove" onclick="removeEditRepCommissionField(${id})">Remove</button>
+            `;
+            container.appendChild(field);
+        }
+        
+        function removeEditRepCommissionField(id) {
+            document.getElementById(`edit-rep-commission-${id}`).remove();
         }
         
         function closeEditDealModal() {
@@ -6391,25 +6437,74 @@
             deal.psfAmount = psfAmount;
             deal.source = formData.get('source') || '';
             
-            // Update in rep data too
+            // REMOVE deal from all reps first
             Object.values(repData).forEach(rep => {
                 if (rep.deals) {
-                    const repDeal = rep.deals.find(d => d.id === editingDealId);
-                    if (repDeal) {
-                        Object.assign(repDeal, deal);
-                        // Recalculate rep commission based on their percentage
-                        repDeal.commission = totalCommission * (repDeal.percentage / 100);
+                    const dealIndex = rep.deals.findIndex(d => d.id === editingDealId);
+                    if (dealIndex !== -1) {
+                        const oldCommission = rep.deals[dealIndex].commission;
+                        const wasPaid = rep.deals[dealIndex].paidOut === 'YES';
+                        
+                        // Remove from totals
+                        rep.totalOwed -= oldCommission;
+                        if (wasPaid) {
+                            rep.totalPaid -= oldCommission;
+                        }
+                        rep.outstanding = rep.totalOwed - rep.totalPaid;
+                        rep.numDeals -= 1;
+                        
+                        // Remove deal from rep
+                        rep.deals.splice(dealIndex, 1);
                     }
                 }
             });
             
+            // Reset rep commissions in deal
+            deal.rayCommission = 0;
+            deal.shwekyCommission = 0;
+            deal.riversCommission = 0;
+            
+            // ADD deal back to selected reps with new commissions
+            let totalRepCommissions = 0;
+            for (let i = 0; i < editRepCommissionCounter; i++) {
+                const repName = formData.get(`editRepName_${i}`);
+                const repPercentage = parseFloat(formData.get(`editRepPercentage_${i}`));
+                
+                if (repName && repPercentage) {
+                    const repCommission = totalCommission * (repPercentage / 100);
+                    totalRepCommissions += repCommission;
+                    
+                    // Add to deal
+                    if (repName === 'Ray') deal.rayCommission = repCommission;
+                    if (repName === 'Avraham Shweky') deal.shwekyCommission = repCommission;
+                    if (repName === 'David Rivers') deal.riversCommission = repCommission;
+                    
+                    // Add to rep data
+                    if (!repData[repName].deals) repData[repName].deals = [];
+                    
+                    const newRepDeal = {
+                        ...deal,
+                        commission: repCommission,
+                        percentage: repPercentage
+                    };
+                    
+                    repData[repName].deals.push(newRepDeal);
+                    repData[repName].totalOwed += repCommission;
+                    repData[repName].outstanding += repCommission;
+                    repData[repName].numDeals += 1;
+                }
+            }
+            
+            deal.netProfit = totalCommission - totalRepCommissions;
+            
             closeEditDealModal();
-            alert('Deal updated successfully!');
+            alert('Deal updated successfully! Rep assignments have been changed.');
             
             // Refresh current page
             const currentPage = document.querySelector('.page.active').id;
             if (currentPage === 'dashboard') loadDashboard();
             if (currentPage === 'deals') loadAllDeals();
+            if (currentPage === 'reps') loadRepsPage();
         }
         
         // Initialize - data will be loaded here
