@@ -616,6 +616,71 @@
                 width: 100%;
             }
         }
+    
+        /* Theme Toggle */
+        .theme-toggle-container {
+            position: fixed;
+            top: 1rem;
+            right: 2rem;
+            z-index: 200;
+        }
+        
+        .theme-toggle-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .theme-toggle-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-primary);
+        }
+        
+        /* Light Theme */
+        body.light-theme {
+            --bg-dark: #ffffff;
+            --bg-card: #f8f9fa;
+            --bg-hover: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border: #dee2e6;
+        }
+        
+        body.light-theme .nav {
+            background: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        body.light-theme .metric-card,
+        body.light-theme .section {
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        body.light-theme .rep-card,
+        body.light-theme .summary-card,
+        body.light-theme .commission-item {
+            background: #f8f9fa;
+        }
+        
+        body.light-theme th {
+            background: #f8f9fa;
+        }
+        
+        body.light-theme tbody tr:hover {
+            background: #f8f9fa;
+        }
+
     </style>
 </head>
 <body>
@@ -628,6 +693,16 @@
             <button class="nav-link" onclick="showPage('reps')">By Rep</button>
         </div>
     </nav>
+
+    <!-- Theme Toggle -->
+    <div class="theme-toggle-container">
+        <button class="theme-toggle-btn" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+            <span id="theme-text">Light Mode</span>
+        </button>
+    </div>
+
+
 
     <div class="container">
         <!-- DASHBOARD PAGE -->
@@ -6101,6 +6176,36 @@
             // Data will be injected here
             loadDashboard();
         }
+        
+
+        // Theme Toggle Functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+            
+            body.classList.toggle('light-theme');
+            
+            if (body.classList.contains('light-theme')) {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Dark Mode';
+                localStorage.setItem('theme', 'light');
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Light Mode';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        // Load saved theme on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-theme');
+                document.getElementById('theme-icon').textContent = '☀️';
+                document.getElementById('theme-text').textContent = 'Dark Mode';
+            }
+        });
         
         window.addEventListener('DOMContentLoaded', initDashboard);
     </script>
