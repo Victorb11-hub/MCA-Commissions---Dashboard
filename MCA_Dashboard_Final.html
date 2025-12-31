@@ -710,6 +710,73 @@
             background: #f8f9fa;
         }
 
+            
+        /* Edit Button */
+        .btn-edit {
+            padding: 0.5rem 1rem;
+            background: var(--accent-secondary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-edit:hover {
+            background: #0052cc;
+            transform: translateY(-2px);
+        }
+        
+        .btn-save {
+            padding: 0.5rem 1rem;
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 0.5rem;
+        }
+        
+        .btn-save:hover {
+            background: #00dd77;
+        }
+        
+        .btn-cancel {
+            padding: 0.5rem 1rem;
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-cancel:hover {
+            background: var(--border);
+        }
+        
+        .edit-input {
+            padding: 0.5rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--accent-primary);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            width: 100%;
+        }
+        
+        .edit-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+        }
+
     </style>
 </head>
 <body>
@@ -816,6 +883,64 @@
                     <button class="add-btn" onclick="openAddRepModal()">+ Add Rep</button>
                 </div>
                 <div class="rep-cards" id="repsCards"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Edit Deal Modal -->
+    <div class="modal" id="editDealModal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Edit Deal</h2>
+                <button class="close-btn" onclick="closeEditDealModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="editDealForm" onsubmit="submitEditDeal(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Business Name *</label>
+                            <input type="text" class="form-input" name="dealName" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Client Name</label>
+                            <input type="text" class="form-input" name="client">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Date Funded *</label>
+                            <input type="date" class="form-input" name="dateFunded" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Lender *</label>
+                            <input type="text" class="form-input" name="lender" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount Funded *</label>
+                            <input type="number" class="form-input" name="amount" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Rate (Factor)</label>
+                            <input type="number" class="form-input" name="rate" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Source</label>
+                            <input type="text" class="form-input" name="source">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Commission % *</label>
+                            <input type="number" class="form-input" name="commissionPct" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">PSF Amount</label>
+                            <input type="number" class="form-input" name="psfAmount" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="closeEditDealModal()">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Changes</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -5825,6 +5950,7 @@
                             <th>Paid?</th>
                             ${showAllColumns ? '<th>Past Clawback Period?</th>' : ''}
                             ${showAllColumns ? '<th>Clawed Back?</th>' : ''}
+                            ${showAllColumns ? '<th>Actions</th>' : ''}
                         </tr>
                     </thead>
                     <tbody>
@@ -5863,6 +5989,11 @@
                                             ${deal.clawedBack === 'YES' ? 'YES ⚠' : 'NO'}
                                         </span>
                                     </label>
+                                </td>
+                                ` : ''}
+                                ${showAllColumns ? `
+                                <td>
+                                    <button class="btn-edit" onclick="editDeal(${deal.id})">Edit</button>
                                 </td>
                                 ` : ''}
                             </tr>
@@ -6198,6 +6329,87 @@
             const currentPage = document.querySelector('.page.active').id;
             if (currentPage === 'dashboard') loadDashboard();
             if (currentPage === 'reps') loadRepsPage();
+        }
+        
+
+        // EDIT DEAL FUNCTIONALITY
+        let editingDealId = null;
+        
+        function editDeal(dealId) {
+            const deal = allDealsData.find(d => d.id === dealId);
+            if (!deal) return;
+            
+            // Open edit modal
+            document.getElementById('editDealModal').classList.add('active');
+            document.getElementById('editDealForm').reset();
+            
+            // Populate form
+            document.querySelector('#editDealForm [name="dealName"]').value = deal.dealName || '';
+            document.querySelector('#editDealForm [name="client"]').value = deal.client || '';
+            document.querySelector('#editDealForm [name="dateFunded"]').value = deal.dateFunded || '';
+            document.querySelector('#editDealForm [name="lender"]').value = deal.lender || '';
+            document.querySelector('#editDealForm [name="amount"]').value = deal.amount || 0;
+            document.querySelector('#editDealForm [name="rate"]').value = deal.rate || 0;
+            document.querySelector('#editDealForm [name="source"]').value = deal.source || '';
+            
+            // Calculate commission percentage from total
+            const commissionPct = deal.amount > 0 ? ((deal.totalCommission - (deal.psfAmount || 0)) / deal.amount * 100) : 0;
+            document.querySelector('#editDealForm [name="commissionPct"]').value = commissionPct.toFixed(2);
+            document.querySelector('#editDealForm [name="psfAmount"]').value = deal.psfAmount || 0;
+            
+            editingDealId = dealId;
+        }
+        
+        function closeEditDealModal() {
+            document.getElementById('editDealModal').classList.remove('active');
+            editingDealId = null;
+        }
+        
+        function submitEditDeal(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            
+            const deal = allDealsData.find(d => d.id === editingDealId);
+            if (!deal) return;
+            
+            // Calculate new commission
+            const amount = parseFloat(formData.get('amount'));
+            const commissionPct = parseFloat(formData.get('commissionPct')) / 100;
+            const psfAmount = parseFloat(formData.get('psfAmount')) || 0;
+            const baseCommission = amount * commissionPct;
+            const totalCommission = baseCommission + psfAmount;
+            
+            // Update deal
+            deal.dealName = formData.get('dealName');
+            deal.client = formData.get('client') || deal.dealName;
+            deal.dateFunded = formData.get('dateFunded');
+            deal.lender = formData.get('lender');
+            deal.amount = amount;
+            deal.rate = parseFloat(formData.get('rate')) || 0;
+            deal.payback = amount * (parseFloat(formData.get('rate')) || 1);
+            deal.totalCommission = totalCommission;
+            deal.psfAmount = psfAmount;
+            deal.source = formData.get('source') || '';
+            
+            // Update in rep data too
+            Object.values(repData).forEach(rep => {
+                if (rep.deals) {
+                    const repDeal = rep.deals.find(d => d.id === editingDealId);
+                    if (repDeal) {
+                        Object.assign(repDeal, deal);
+                        // Recalculate rep commission based on their percentage
+                        repDeal.commission = totalCommission * (repDeal.percentage / 100);
+                    }
+                }
+            });
+            
+            closeEditDealModal();
+            alert('Deal updated successfully!');
+            
+            // Refresh current page
+            const currentPage = document.querySelector('.page.active').id;
+            if (currentPage === 'dashboard') loadDashboard();
+            if (currentPage === 'deals') loadAllDeals();
         }
         
         // Initialize - data will be loaded here
